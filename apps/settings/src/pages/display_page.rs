@@ -138,7 +138,7 @@ impl SimpleComponent for DisplayPage {
         let scrolled_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Never) // Disable horizontal scrolling
             .min_content_width(360)
-            .min_content_height(360)
+            .min_content_height(330)
             .child(&scrollable_content)
             .build();
         root.append(&scrolled_window);
