@@ -40,6 +40,7 @@ pub enum Message {
     MenuItemPressed(String),
     BackPressed,
     ScreenTimeoutOpted,
+    BirghnessChanged(u8),
 }
 
 pub struct SettingItem {
@@ -86,13 +87,13 @@ impl SimpleComponent for DisplayPage {
             .halign(gtk::Align::Start)
             .build();
 
-        let brigtness_scale = gtk::Scale::builder()
+        let mut brigtness_scale = gtk::Scale::builder()
             .draw_value(true)
             .adjustment(
                 &gtk::Adjustment::builder()
                     .lower(0.0)
                     .upper(100.0)
-                    .value(50.0)
+                    .value(10.00)
                     .step_increment(10.0)
                     .page_increment(10.0)
                     .build(),
@@ -102,6 +103,12 @@ impl SimpleComponent for DisplayPage {
             .css_classes(["custom-scale"])
             .build();
 
+        // Connect a signal to the scale
+        brigtness_scale.connect_value_changed(|scale| {
+            let value = scale.value() as u8;
+            println!("Brightness value: {}", value);
+            // let _ = sender.send(Message::BirghnessChanged(value));
+        });
 
         let brigtness_items = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
@@ -132,7 +139,7 @@ impl SimpleComponent for DisplayPage {
         let scrollable_content = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
-        scrollable_content.append(&brigntness_label);
+        // scrollable_content.append(&brigtness_label);
         scrollable_content.append(&brigtness_items);
 
         let scrolled_window = gtk::ScrolledWindow::builder()
@@ -183,6 +190,10 @@ impl SimpleComponent for DisplayPage {
             }
             Message::ScreenTimeoutOpted => {
                 let _ = sender.output(Message::ScreenTimeoutOpted);
+            }
+            Message::BirghnessChanged(value) => {
+                let _ = sender.output(Message::BirghnessChanged(value));
+                print!("Brightness value: {}", value)
             }
         }
     }

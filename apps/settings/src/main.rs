@@ -5,6 +5,7 @@ use relm4::{gtk, ComponentParts, ComponentSender, RelmApp, SimpleComponent};
 use relm4::{Component, ComponentController, Controller};
 
 mod pages;
+mod modules;
 mod settings;
 mod theme;
 mod widgets;
