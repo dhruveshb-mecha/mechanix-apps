@@ -1,7 +1,13 @@
 use std::fmt;
 
 use gtk::{glib::clone, prelude::GtkWindowExt};
-use relm4::{gtk, ComponentParts, ComponentSender, RelmApp, SimpleComponent};
+use modules::battery::handler::BatteryServiceHandle;
+use modules::device_info::handler::DeviceInfoServiceHandle;
+use modules::display::handler::DisplayServiceHandle;
+use modules::wireless_network::handler::NetworkServiceHandle;
+use relm4::component::{AsyncComponentParts, AsyncComponent};
+use relm4::{async_trait::async_trait};
+use relm4::{gtk,  RelmApp,AsyncComponentSender};
 use relm4::{Component, ComponentController, Controller};
 
 mod pages;
@@ -30,7 +36,7 @@ use pages::{
         Settings as ConnectNetworkPageSettings,
     },
     display_page::{DisplayPage, Message as DisplayPageMessage, Settings as DisplayPageSettings},
-    battery_page::{BatteryPage, Message as BatteryPageMessage, Settings as BatteryPageSettings},
+    battery_page::{BatteryPageModel, Message as BatteryPageMessage, Settings as BatteryPageSettings},
     home::{HomePage, Message as HomePageMessage, Settings as HomePageSettings},
     lock_timeout_page::{
         LockTimeoutPage, Message as LockTimeoutPageMessage, Settings as LockTimeoutPageSettings,
@@ -106,6 +112,7 @@ use pages::{
 };
 use settings::LockScreenSettings;
 use tracing::info;
+use wifi_ctrl::sta::ScanResult;
 pub mod errors; 
 use crate::theme::LockScreenTheme;
 
@@ -134,7 +141,7 @@ struct LockScreen {
     performance_mode_page: Controller<PerformanceModePage>,
     security_page: Controller<SecurityPage>,
     lock_timeout_page: Controller<LockTimeoutPage>,
-    battery_page: Controller<BatteryPage>,
+    battery_page: Controller<BatteryPageModel>,
     reset_pin_page: Controller<ResetPinPage>,
     date_time_page: Controller<DateTimePage>,
     set_time_page: Controller<SetTimePage>,
@@ -229,7 +236,11 @@ pub enum Message {
     ChangeScreen(Screens),
     GoBack,
     Dummy,
+    BatteryPercentageChanged(u8),
+    DisplayBrightnessChanged(u8),
+    NetworkStatusChanged(Vec<ScanResult>),
 }
+
 
 struct AppWidgets {
     screens_stack: gtk::Stack,
@@ -287,7 +298,8 @@ fn init_window(settings: LockScreenSettings) -> gtk::Window {
 //     window
 // }
 
-impl SimpleComponent for LockScreen {
+#[async_trait(?Send)]
+impl AsyncComponent for LockScreen {
     /// The type of the messages that this component can receive.
     type Input = Message;
     /// The type of the messages that this component can send.
@@ -298,6 +310,8 @@ impl SimpleComponent for LockScreen {
     type Root = gtk::Window;
     /// A data structure that contains the widgets that you will need to update.
     type Widgets = AppWidgets;
+
+    type CommandOutput = Message;
 
     fn init_root() -> Self::Root {
         let settings = match settings::read_settings_yml() {
@@ -325,11 +339,13 @@ impl SimpleComponent for LockScreen {
     }
 
     /// Initialize the UI and model.
-    fn init(
+
+    /// Initialize the UI and model.
+    async fn init(
         _: Self::Init,
-        window: &Self::Root,
-        sender: ComponentSender<Self>,
-    ) -> relm4::ComponentParts<Self> {
+        window: Self::Root,
+        sender: AsyncComponentSender<Self>,
+    ) -> AsyncComponentParts<Self> {
         let icon_theme = gtk::IconTheme::builder().build();
         info!("icon paths are {:?}", icon_theme.resource_path());
         let settings = match settings::read_settings_yml() {
@@ -757,7 +773,7 @@ impl SimpleComponent for LockScreen {
             Option::from(Screens::Display.to_string().as_str()),
         );
 
-        let battery_page: Controller<BatteryPage> = BatteryPage::builder()
+        let battery_page: Controller<BatteryPageModel> = BatteryPageModel::builder()
             .launch(BatteryPageSettings {
                 modules: modules.clone(),
                 layout: layout.clone(),
@@ -1028,6 +1044,8 @@ impl SimpleComponent for LockScreen {
         //Adding stack to window
         window.set_child(Some(&screens_stack));
 
+        let lock_screen_settings = settings.clone();
+
         let model = LockScreen {
             settings,
             custom_theme,
@@ -1064,11 +1082,18 @@ impl SimpleComponent for LockScreen {
         };
 
         let widgets = AppWidgets { screens_stack };
+        let sender: relm4::Sender<Message> = sender.input_sender().clone();
+        init_services(lock_screen_settings, sender).await;
 
-        ComponentParts { model, widgets }
+        AsyncComponentParts { model, widgets } 
     }
-
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+    async fn update(
+        &mut self,
+        message: Self::Input,
+        _sender: AsyncComponentSender<Self>,
+        _root: &Self::Root,
+    ) {
+       
         info!("Update message is {:?}", message);
         match message {
             Message::ChangeScreen(screen) => {
@@ -1082,12 +1107,19 @@ impl SimpleComponent for LockScreen {
                 self.current_screen = previous_screen;
                 }
             }
+            Message::BatteryPercentageChanged(percentage) => {
+               self.battery_page.sender().send(BatteryPageMessage::PercentageChanged(percentage));
+            }
+            Message::NetworkStatusChanged(networks) => {
+                self.manage_networks_page.sender().send(ManageNetworksPageMessage::ListOfKnownNetwork(networks));
+            }
+
             _ => (),
         }
     }
 
     /// Update the view to represent the updated model.
-    fn update_view(&self, widgets: &mut Self::Widgets, _sender: ComponentSender<Self>) {
+    fn update_view(&self, widgets: &mut Self::Widgets, _sender:  AsyncComponentSender<Self>) {
         //updating stack screen when current screen changes
         widgets
             .screens_stack
@@ -1104,5 +1136,38 @@ fn main() {
         .with_thread_names(true)
         .init();
     let app = RelmApp::new("apps.settings").with_args(vec![]);
-    app.run::<LockScreen>(());
+    app.run_async::<LockScreen>(());
+}
+
+async fn init_services(settings: LockScreenSettings, sender: relm4::Sender<Message>) {
+    let mut battery_service_handle = BatteryServiceHandle::new();
+    let sender_clone_1 = sender.clone();
+    let _ = relm4::spawn_local(async move {
+        info!(task = "init_services", "Starting battery service");
+        battery_service_handle.run(sender_clone_1).await;
+    });
+
+    let mut device_info_service_handle = DeviceInfoServiceHandle::new();
+
+    let sender_clone_5 = sender.clone();
+    let _ = relm4::spawn_local(async move {
+        info!(task = "init_services", "Starting device info service");
+        device_info_service_handle.run(sender_clone_5).await;
+    });
+
+    let mut display_service_handle = DisplayServiceHandle::new();
+    let sender_clone_2 = sender.clone();
+
+
+    let _ = relm4::spawn_local(async move {
+        info!(task = "init_services", "Starting display service");
+        display_service_handle.run(sender_clone_2).await;
+    });
+
+    let mut network_service_handle = NetworkServiceHandle::new();
+    let sender_clone_3 = sender.clone();
+    let _ = relm4::spawn_local(async move {
+        info!(task = "init_services", "Starting network service");
+        network_service_handle.run(sender_clone_3).await;
+    });
 }
