@@ -1,8 +1,9 @@
 use gtk::prelude::*;
 use relm4::{
     gtk::{self},
-    Component, ComponentController, ComponentParts, ComponentSender, SimpleComponent, Controller,
+    Component, ComponentController, ComponentParts, ComponentSender, SimpleComponent, Controller, RelmRemoveAllExt,
 };
+use wifi_ctrl::sta::ScanResult;
 use crate::{
     settings::{LayoutSettings, Modules, WidgetConfigs},
     widgets::custom_network_item::{
@@ -26,12 +27,15 @@ pub struct Settings {
 //Model
 pub struct ManageNetworksPage {
     settings: Settings,
+    list_of_known_networks: Vec<ScanResult>,
 }
 
 //Widgets
 pub struct ManageNetworksPageWidgets {
     back_button: Controller<IconButton>,
     submit_button: Controller<IconButton>,
+    available_networks_list: gtk::Box,
+    available_network_1: Controller<CustomNetworkItem>,
 }
 
 //Messages
@@ -41,6 +45,7 @@ pub enum Message {
     KnownNetworkPressed,
     AvailableNetworkPressed,
     AddNetworkPressed,
+    ListOfKnownNetwork(Vec<ScanResult>),
 }
 
 pub struct SettingItem {
@@ -235,11 +240,13 @@ impl SimpleComponent for ManageNetworksPage {
 
         root.append(&footer);
 
-        let model = ManageNetworksPage { settings: init };
+        let model = ManageNetworksPage { settings: init , list_of_known_networks: vec![]};
 
         let widgets = ManageNetworksPageWidgets {
             back_button,
             submit_button,
+            available_networks_list,
+            available_network_1,
         };
 
         ComponentParts { model, widgets }
@@ -260,8 +267,41 @@ impl SimpleComponent for ManageNetworksPage {
             Message::AddNetworkPressed => {
                 let _ = sender.output(Message::AddNetworkPressed);
             }
+            Message::ListOfKnownNetwork(list) => {
+                self.list_of_known_networks = list;
+            }
         }
     }
 
-    fn update_view(&self, widgets: &mut Self::Widgets, sender: ComponentSender<Self>) {}
+    fn update_view(&self, widgets: &mut Self::Widgets, sender: ComponentSender<Self>) {
+
+        widgets.available_networks_list.remove_all(); // Clear any existing items
+
+        //map list_of_known_networks and create ui component  and add to aviailable_networks_list
+
+        
+        for network in &self.list_of_known_networks {
+            let network_item = CustomNetworkItem::builder()
+                .launch(CustomNetworkItemSettings {
+                    name: network.name.clone(), // Assuming SSID is in the ScanResult struct
+                    is_connected: false, // Assuming this field exists
+                    is_private: false, // Assuming this field exists
+                    strength: network.signal as i32, // Adjust field name as needed
+                    connected_icon: self.settings.widget_configs.network_item.connected_icon.clone(),
+                    private_icon: self.settings.widget_configs.network_item.private_icon.clone(),
+                    strength_icon:self.settings.widget_configs.network_item.info_icon.clone(), // Implement this function
+                    info_icon: self.settings.widget_configs.network_item.info_icon.clone(),
+                })
+                .forward(sender.input_sender(), |msg| {
+                    info!("msg is {:?}", msg);
+                    match msg {
+                        CustomNetworkItemMessage::WidgetClicked => Message::AvailableNetworkPressed,
+                    }
+                });
+    
+            widgets.available_networks_list.append(network_item.widget());
+
+            }
+
+    }
 }

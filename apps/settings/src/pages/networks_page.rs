@@ -25,6 +25,7 @@ pub struct Settings {
 //Model
 pub struct NetworksPage {
     settings: Settings,
+    
 }
 
 //Widgets
