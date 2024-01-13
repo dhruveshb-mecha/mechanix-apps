@@ -32,6 +32,7 @@ pub struct DisplayPage {
 //Widgets
 pub struct DisplayPageWidgets {
     back_button: Controller<IconButton>,
+    brigtness_scale: gtk::Scale,
 }
 
 //Messages
@@ -40,7 +41,7 @@ pub enum Message {
     MenuItemPressed(String),
     BackPressed,
     ScreenTimeoutOpted,
-    BirghnessChanged(u8),
+    BirghnessUpdate(u8),
 }
 
 pub struct SettingItem {
@@ -175,7 +176,8 @@ impl SimpleComponent for DisplayPage {
         let model = DisplayPage { settings: init };
 
         let widgets = DisplayPageWidgets {
-            back_button
+            back_button,
+            brigtness_scale
         };
 
         ComponentParts { model, widgets }
@@ -191,12 +193,14 @@ impl SimpleComponent for DisplayPage {
             Message::ScreenTimeoutOpted => {
                 let _ = sender.output(Message::ScreenTimeoutOpted);
             }
-            Message::BirghnessChanged(value) => {
-                let _ = sender.output(Message::BirghnessChanged(value));
+            Message::BirghnessUpdate(value) => {
+                let _ = sender.output(Message::BirghnessUpdate(value));
                 print!("Brightness value: {}", value)
             }
         }
     }
 
-    fn update_view(&self, widgets: &mut Self::Widgets, sender: ComponentSender<Self>) {}
+    fn update_view(&self, widgets: &mut Self::Widgets, sender: ComponentSender<Self>) {
+
+    }
 }
