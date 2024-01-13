@@ -1,27 +1,28 @@
-use gtk::prelude::*;
 use custom_utils::get_image_from_path;
+use gtk::prelude::*;
 use relm4::{
     gtk::{self},
-    Component, ComponentController, ComponentParts, ComponentSender, SimpleComponent, Controller,
+    AsyncComponentSender, Component, ComponentController, ComponentParts, ComponentSender,
+    Controller, SimpleComponent,
 };
 
 use crate::{
-    settings::{LayoutSettings, Modules, WidgetConfigs},
+    modules::battery::handler::BatteryServiceHandle,
+    settings::{self, LayoutSettings, Modules, WidgetConfigs},
     widgets::custom_list_item::{
-            CustomListItem, CustomListItemSettings, Message as CustomListItemMessage,
-        },
+        CustomListItem, CustomListItemSettings, Message as CustomListItemMessage,
+    },
 };
 
-
-
-
 use custom_widgets::icon_button::{
-    IconButton, IconButtonCss, InitSettings as IconButtonStetings, OutputMessage as IconButtonOutputMessage,
+    IconButton, IconButtonCss, InitSettings as IconButtonSettings,
+    OutputMessage as IconButtonOutputMessage,
 };
 
 use tracing::info;
 
 //Init Settings
+#[derive(Clone)]
 pub struct Settings {
     pub modules: Modules,
     pub layout: LayoutSettings,
@@ -29,22 +30,26 @@ pub struct Settings {
 }
 
 //Model
-pub struct BatteryPage {
+pub struct BatteryPageModel {
     settings: Settings,
+    percentage: u8,
 }
 
 //Widgets
 pub struct BatteryPageWidgets {
     back_button: Controller<IconButton>,
+    battery_percentage_level: gtk::LevelBar,
+
 }
 
 //Messages
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Message {
     MenuItemPressed(String),
     BackPressed,
     ScreenTimeoutOpted,
-    PerformanceOpted
+    PerformanceOpted,
+    PercentageChanged(u8),
 }
 
 pub struct SettingItem {
@@ -53,7 +58,7 @@ pub struct SettingItem {
     end_icon: Option<String>,
 }
 
-impl SimpleComponent for BatteryPage {
+impl SimpleComponent for BatteryPageModel {
     type Init = Settings;
     type Input = Message;
     type Output = Message;
@@ -96,12 +101,12 @@ impl SimpleComponent for BatteryPage {
             .build();
 
         let battery_percentage_level = gtk::LevelBar::builder()
-        .min_value(0.0)
-        .max_value(100.0)
-        .value(70.0)
-        .orientation(gtk::Orientation::Horizontal) 
-        .css_classes(["custom-levelbar"])
-        .build();
+            .min_value(0.0)
+            .max_value(100.0)
+            .value(0.0)
+            .orientation(gtk::Orientation::Horizontal)
+            .css_classes(["custom-levelbar"])
+            .build();
 
         let battery_items = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
@@ -117,7 +122,7 @@ impl SimpleComponent for BatteryPage {
             .forward(sender.input_sender(), |msg| {
                 info!("msg is {:?}", msg);
                 println!("BATTERY PAGE - SCREEN clicked {:?}", msg);
-                match msg { 
+                match msg {
                     CustomListItemMessage::WidgetClicked => Message::ScreenTimeoutOpted,
                 }
             });
@@ -125,20 +130,19 @@ impl SimpleComponent for BatteryPage {
         let screen_off_timeout_widget = screen_off_timeout.widget();
 
         let battery_performance_mode = CustomListItem::builder()
-        .launch(CustomListItemSettings {
-            start_icon: None,
-            text: "Performance Mode".to_string(),
-            value: "Balenced".to_owned(),
-            end_icon: widget_configs.menu_item.end_icon.clone(),
-        })
-        .forward(sender.input_sender(), |msg| {
-            info!("msg is {:?}", msg);
-            match msg {
-                CustomListItemMessage::WidgetClicked => Message::PerformanceOpted,
-            }
-        });
+            .launch(CustomListItemSettings {
+                start_icon: None,
+                text: "Performance Mode".to_string(),
+                value: "Balenced".to_owned(),
+                end_icon: widget_configs.menu_item.end_icon.clone(),
+            })
+            .forward(sender.input_sender(), |msg| {
+                info!("msg is {:?}", msg);
+                match msg {
+                    CustomListItemMessage::WidgetClicked => Message::PerformanceOpted,
+                }
+            });
         let battery_performance_mode_widget = battery_performance_mode.widget();
-
 
         battery_items.append(&battery_percentage_level);
         battery_items.append(screen_off_timeout_widget);
@@ -162,15 +166,15 @@ impl SimpleComponent for BatteryPage {
         root.append(&scrolled_window);
 
         let footer = gtk::Box::builder()
-        .orientation(gtk::Orientation::Horizontal)
-        .css_classes(["footer"])
-        .hexpand(true)
-        .vexpand(true)
-        .valign(gtk::Align::End)
-        .build();
+            .orientation(gtk::Orientation::Horizontal)
+            .css_classes(["footer"])
+            .hexpand(true)
+            .vexpand(true)
+            .valign(gtk::Align::End)
+            .build();
 
         let back_button = IconButton::builder()
-            .launch(IconButtonStetings {
+            .launch(IconButtonSettings {
                 icon: widget_configs.footer.back_icon.to_owned(),
                 toggle_icon: None,
                 css: IconButtonCss::default(),
@@ -183,11 +187,16 @@ impl SimpleComponent for BatteryPage {
 
         root.append(&footer);
 
-        let model = BatteryPage { settings: init };
-
-        let widgets = BatteryPageWidgets {
-            back_button
+        let model = BatteryPageModel {
+            settings: init,
+            percentage: 10,
         };
+
+        let widgets = BatteryPageWidgets { back_button,battery_percentage_level };
+
+        let battery_settings = model.settings.clone();
+        let sender: relm4::Sender<Message> = sender.input_sender().clone();
+        // init_services(battery_settings, sender);
 
         ComponentParts { model, widgets }
     }
@@ -205,8 +214,27 @@ impl SimpleComponent for BatteryPage {
             Message::PerformanceOpted => {
                 let _ = sender.output(Message::PerformanceOpted);
             }
+            Message::PercentageChanged(percentage) => {
+                self.percentage = percentage;
+
+                let _ = sender.output(Message::PercentageChanged(percentage));
+            }
         }
     }
 
-    fn update_view(&self, widgets: &mut Self::Widgets, sender: ComponentSender<Self>) {}
+    fn update_view(&self, widgets: &mut Self::Widgets, sender: ComponentSender<Self>) {
+        info!("battery page - msg - Update view");
+
+        //update battery percentage
+        widgets.battery_percentage_level.set_value(self.percentage as f64);
+    }
 }
+
+// fn init_services(settings: Settings, sender: relm4::Sender<Message>) {
+//     let mut battery_service_handle = BatteryServiceHandle::new();
+//     let sender_clone_1 = sender.clone();
+//     let _ = relm4::spawn_local(async move {
+//         info!(task = "init_services", "Starting battery service");
+//         battery_service_handle.run(sender_clone_1).await;
+//     });
+// }

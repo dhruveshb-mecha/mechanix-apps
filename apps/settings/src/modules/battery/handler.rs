@@ -2,9 +2,10 @@ use relm4::Sender;
 use std::time::Duration;
 use tokio::{sync::oneshot, time};
 
-use crate::{BatteryState, Message};
+use crate::{Message,};
 
 use super::service::BatteryService;
+
 use tracing::{error, info};
 
 #[derive(Debug)]
@@ -36,12 +37,14 @@ impl BatteryServiceHandle {
         loop {
             interval.tick().await;
             match BatteryService::get_battery_status().await {
-                Ok(battery_status) => {
-                    let _ = sender.send(Message::BatteryStatusUpdate(battery_status));
+                //if success send message to update battery percentage or else send dummy message to update battery percentage to 10
+                Ok(percentage) => {
+                    info!("Battery percentage: {}", percentage);
+                    sender.send(Message::BatteryPercentageChanged(percentage)).unwrap();
                 }
                 Err(e) => {
-                    error!("error while getting battery status {}", e);
-                    let _ = sender.send(Message::BatteryStatusUpdate(BatteryState::NotFound));
+                    error!("Error getting battery percentage: {}", e);
+                    sender.send(Message::BatteryPercentageChanged(10)).unwrap();
                 }
             };
         }
