@@ -1,21 +1,25 @@
-use gtk::prelude::*;
-use custom_utils::get_image_from_path;
-use relm4::{
-    gtk::{self},
-    Component, ComponentController, ComponentParts, ComponentSender, SimpleComponent, Controller,
-};
 use crate::{
+    modules,
     settings::{LayoutSettings, Modules, WidgetConfigs},
     widgets::custom_list_item::{
-            CustomListItem, CustomListItemSettings, Message as CustomListItemMessage,
-        },
+        CustomListItem, CustomListItemSettings, Message as CustomListItemMessage,
+    },
+};
+use custom_utils::get_image_from_path;
+use gtk::prelude::*;
+use relm4::{
+    gtk::{self},
+    Component, ComponentController, ComponentParts, ComponentSender, Controller, SimpleComponent,
 };
 
 use custom_widgets::icon_button::{
-    IconButton, IconButtonCss, InitSettings as IconButtonStetings, OutputMessage as IconButtonOutputMessage,
+    IconButton, IconButtonCss, InitSettings as IconButtonStetings,
+    OutputMessage as IconButtonOutputMessage,
 };
 
 use tracing::info;
+
+use modules::display::service::DisplayService;
 
 //Init Settings
 pub struct Settings {
@@ -76,11 +80,11 @@ impl SimpleComponent for DisplayPage {
         let header_title = gtk::Label::builder()
             .label("Display")
             .css_classes(["header-title"])
-            .build(); 
+            .build();
         let header = gtk::Box::builder()
             .orientation(gtk::Orientation::Horizontal)
             .css_classes(["header"])
-            .build(); 
+            .build();
         header.append(&header_title);
 
         let brigntness_label = gtk::Label::builder()
@@ -104,11 +108,13 @@ impl SimpleComponent for DisplayPage {
             .css_classes(["custom-scale"])
             .build();
 
+        let clone_sender = sender.input_sender().clone();
         // Connect a signal to the scale
-        brigtness_scale.connect_value_changed(|scale| {
-            let value = scale.value() as u8;
-            println!("Brightness value: {}", value);
-            // let _ = sender.send(Message::BirghnessChanged(value));
+        brigtness_scale.connect_value_changed(move |scale| {
+            // let value = scale.value() as u8;
+            // println!("Brightness value: {}", value);
+
+            let _ = clone_sender.send(Message::BirghnessUpdate(scale.value() as u8));
         });
 
         let brigtness_items = gtk::Box::builder()
@@ -125,7 +131,7 @@ impl SimpleComponent for DisplayPage {
             .forward(sender.input_sender(), |msg| {
                 info!("msg is {:?}", msg);
                 println!("DISPLAY PAGE - SCREEN clicked {:?}", msg);
-                match msg { 
+                match msg {
                     CustomListItemMessage::WidgetClicked => Message::ScreenTimeoutOpted,
                 }
             });
@@ -150,14 +156,14 @@ impl SimpleComponent for DisplayPage {
             .child(&scrollable_content)
             .build();
         root.append(&scrolled_window);
-      
+
         let footer = gtk::Box::builder()
-        .orientation(gtk::Orientation::Horizontal)
-        .css_classes(["footer"])
-        .hexpand(true)
-        .vexpand(true)
-        .valign(gtk::Align::End)
-        .build();
+            .orientation(gtk::Orientation::Horizontal)
+            .css_classes(["footer"])
+            .hexpand(true)
+            .vexpand(true)
+            .valign(gtk::Align::End)
+            .build();
 
         let back_button = IconButton::builder()
             .launch(IconButtonStetings {
@@ -177,7 +183,7 @@ impl SimpleComponent for DisplayPage {
 
         let widgets = DisplayPageWidgets {
             back_button,
-            brigtness_scale
+            brigtness_scale,
         };
 
         ComponentParts { model, widgets }
@@ -194,13 +200,17 @@ impl SimpleComponent for DisplayPage {
                 let _ = sender.output(Message::ScreenTimeoutOpted);
             }
             Message::BirghnessUpdate(value) => {
+                print!("Brightness value ========: {}", value);
                 let _ = sender.output(Message::BirghnessUpdate(value));
-                print!("Brightness value: {}", value)
+
+                DisplayService::set_display_brightness(value);
             }
         }
     }
 
     fn update_view(&self, widgets: &mut Self::Widgets, sender: ComponentSender<Self>) {
 
+        // widgets.brigtness_scale.set_value();
+      
     }
 }

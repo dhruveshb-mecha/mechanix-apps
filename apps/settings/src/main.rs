@@ -1113,6 +1113,9 @@ impl AsyncComponent for LockScreen {
             Message::NetworkStatusChanged(networks) => {
                 self.manage_networks_page.sender().send(ManageNetworksPageMessage::ListOfKnownNetwork(networks));
             }
+            // Message::DisplayBrightnessChanged(brightness) => {
+            //     self.display_page.sender().send(DisplayPageMessage::BrightnessChanged(brightness));
+            // }
 
             _ => (),
         }

@@ -28,7 +28,7 @@ impl DisplayService {
         Ok(display_brightness)
     }
 
-    pub async fn set_display_brightness(brightness: u8) -> Result<()> {
+    pub  fn set_display_brightness(brightness: u8) -> Result<()> {
         let task = "set_display_brightness";
 
         let display_path = "/sys/class/backlight/backlight".to_string();
