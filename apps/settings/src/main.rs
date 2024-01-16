@@ -242,6 +242,7 @@ pub enum Message {
     OsNameChanged(String),
     OsVersionChanged(String),
     NetworkStatusChanged(Vec<ScanResult>),
+    EthernetMacAddressChanged(String),
 }
 
 
@@ -1122,9 +1123,12 @@ impl AsyncComponent for LockScreen {
             Message::OsVersionChanged(version) => { 
                 self.about_page.sender().send(AboutPageMessage::OSVersionChanged(version));
             }
-            // Message::DisplayBrightnessChanged(brightness) => {
-            //     self.display_page.sender().send(DisplayPageMessage::BrightnessChanged(brightness));
-            // }
+            Message::EthernetMacAddressChanged(mac_address) => {
+                self.about_page.sender().send(AboutPageMessage::EthernetMacAddressChanged(mac_address));
+            }
+            Message::DisplayBrightnessChanged(brightness) => {
+                self.display_page.sender().send(DisplayPageMessage::BirghnessUpdate(brightness));
+            }
 
             _ => (),
         }

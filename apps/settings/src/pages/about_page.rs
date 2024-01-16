@@ -23,6 +23,7 @@ pub struct AboutPage {
     settings: Settings,
     os_name: String,
     os_version: String,
+    ethernet_mac_address: String,
 }
 
 //Widgets
@@ -30,6 +31,7 @@ pub struct AboutPageWidgets {
     back_button: Controller<IconButton>,
     OsName: gtk::Label,
     OsVersion: gtk::Label,
+    EthernetMacAddress: gtk::Label,
 }
 
 //Messages
@@ -39,6 +41,7 @@ pub enum Message {
     HomeIconPressed,
     OSNameChanged(String),
     OSVersionChanged(String),
+    EthernetMacAddressChanged(String),
 }
 
 pub struct SettingItem {
@@ -253,12 +256,14 @@ impl SimpleComponent for AboutPage {
             settings: init,
             os_name: "Mechanix OS".to_owned(),
             os_version: "24.01".to_owned(),
+            ethernet_mac_address: "B0:35:B5:DA:A6:75".to_owned(),
         };
 
         let widgets = AboutPageWidgets {
             back_button,
             OsName: os_value,
             OsVersion: version_value,
+            EthernetMacAddress: ethernet_address_value,
         };
 
         ComponentParts { model, widgets }
@@ -281,6 +286,10 @@ impl SimpleComponent for AboutPage {
                 self.os_version = version.clone();
                 let _ = sender.output(Message::OSVersionChanged(version));
             }
+            Message::EthernetMacAddressChanged(address) => {
+                self.ethernet_mac_address = address.clone();
+                let _ = sender.output(Message::EthernetMacAddressChanged(address));
+            }
         };
     }
 
@@ -288,6 +297,9 @@ impl SimpleComponent for AboutPage {
         info!("About- Update view");
         widgets.OsName.set_label(&self.os_name);
         widgets.OsVersion.set_label(&self.os_version);
+        widgets
+            .EthernetMacAddress
+            .set_label(&self.ethernet_mac_address);
 
     }
 }

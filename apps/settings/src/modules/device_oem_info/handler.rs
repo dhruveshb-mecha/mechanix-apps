@@ -49,6 +49,7 @@ impl DeviceOEMInfoHandle {
                         .send(Message::OsNameChanged(distro_info.name.to_string().trim().to_string()))
                         .unwrap();
                     sender.send(Message::OsVersionChanged(distro_info.version.to_string().trim().to_string())).unwrap();
+                    sender.send(Message::EthernetMacAddressChanged(distro_info.mac_address.to_string().trim().to_string())).unwrap();
                 }
                 Err(e) => {
                     error!("Error getting device oem info: {}", e);
