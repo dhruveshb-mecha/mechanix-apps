@@ -3,6 +3,7 @@ use std::fmt;
 use gtk::{glib::clone, prelude::GtkWindowExt};
 use modules::battery::handler::BatteryServiceHandle;
 use modules::device_info::handler::DeviceInfoServiceHandle;
+use modules::device_oem_info::handler::DeviceOEMInfoHandle;
 use modules::display::handler::DisplayServiceHandle;
 use modules::wireless_network::handler::NetworkServiceHandle;
 use relm4::component::{AsyncComponentParts, AsyncComponent};
@@ -238,6 +239,8 @@ pub enum Message {
     Dummy,
     BatteryPercentageChanged(u8),
     DisplayBrightnessChanged(u8),
+    OsNameChanged(String),
+    OsVersionChanged(String),
     NetworkStatusChanged(Vec<ScanResult>),
 }
 
@@ -1113,6 +1116,12 @@ impl AsyncComponent for LockScreen {
             Message::NetworkStatusChanged(networks) => {
                 self.manage_networks_page.sender().send(ManageNetworksPageMessage::ListOfKnownNetwork(networks));
             }
+            Message::OsNameChanged(name) => {
+                self.about_page.sender().send(AboutPageMessage::OSNameChanged(name));
+             }
+            Message::OsVersionChanged(version) => { 
+                self.about_page.sender().send(AboutPageMessage::OSVersionChanged(version));
+            }
             // Message::DisplayBrightnessChanged(brightness) => {
             //     self.display_page.sender().send(DisplayPageMessage::BrightnessChanged(brightness));
             // }
@@ -1172,5 +1181,12 @@ async fn init_services(settings: LockScreenSettings, sender: relm4::Sender<Messa
     let _ = relm4::spawn_local(async move {
         info!(task = "init_services", "Starting network service");
         network_service_handle.run(sender_clone_3).await;
+    });
+
+    let mut about_service_handle = DeviceOEMInfoHandle::new();
+    let sender_clone_4 = sender.clone();
+    let _ = relm4::spawn_local(async move {
+        info!(task = "init_services", "Starting about service");
+        about_service_handle.run(sender_clone_4).await;
     });
 }

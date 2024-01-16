@@ -1,12 +1,13 @@
+use crate::settings::{LayoutSettings, Modules, WidgetConfigs};
 use custom_utils::get_image_from_path;
+use custom_widgets::icon_button::{
+    IconButton, IconButtonCss, InitSettings as IconButtonStetings,
+    OutputMessage as IconButtonOutputMessage,
+};
 use gtk::prelude::*;
 use relm4::{
     gtk::{self},
-    Component, ComponentController, ComponentParts, ComponentSender, SimpleComponent, Controller,
-};
-use crate::settings::{LayoutSettings, Modules, WidgetConfigs};
-use custom_widgets::icon_button::{
-    IconButton, IconButtonCss, InitSettings as IconButtonStetings, OutputMessage as IconButtonOutputMessage,
+    Component, ComponentController, ComponentParts, ComponentSender, Controller, SimpleComponent,
 };
 use tracing::info;
 
@@ -20,18 +21,24 @@ pub struct Settings {
 //Model
 pub struct AboutPage {
     settings: Settings,
+    os_name: String,
+    os_version: String,
 }
 
 //Widgets
 pub struct AboutPageWidgets {
     back_button: Controller<IconButton>,
+    OsName: gtk::Label,
+    OsVersion: gtk::Label,
 }
 
 //Messages
 #[derive(Debug)]
-pub enum Message { 
+pub enum Message {
     BackPressed,
     HomeIconPressed,
+    OSNameChanged(String),
+    OSVersionChanged(String),
 }
 
 pub struct SettingItem {
@@ -77,7 +84,7 @@ impl SimpleComponent for AboutPage {
             .orientation(gtk::Orientation::Vertical)
             .css_classes(["settings-item-details-box"])
             .build();
-        
+
         let about_details_list2 = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .css_classes(["settings-item-details-box"])
@@ -90,116 +97,114 @@ impl SimpleComponent for AboutPage {
             .build();
 
         let os_label = gtk::Label::builder()
-        .label("OS")
-        .hexpand(true)
-        .halign(gtk::Align::Start)
-        .css_classes(["settings-item-details-box-row-key"])
-        .build();
+            .label("OS")
+            .hexpand(true)
+            .halign(gtk::Align::Start)
+            .css_classes(["settings-item-details-box-row-key"])
+            .build();
 
         let os_value = gtk::Label::builder()
-        .label("Mechanix OS")
-        .hexpand(true)
-        .halign(gtk::Align::End)
-        .css_classes(["settings-item-details-box-row-key"])
-        .build();
+            .label("Mechanix OS")
+            .hexpand(true)
+            .halign(gtk::Align::End)
+            .css_classes(["settings-item-details-box-row-key"])
+            .build();
 
         about_details_row_1.append(&os_label);
         about_details_row_1.append(&os_value);
         about_details_list1.append(&about_details_row_1);
 
         let about_details_row_2 = gtk::Box::builder()
-        .orientation(gtk::Orientation::Horizontal)
-        .hexpand(true)
-        .css_classes(["settings-item-details-box-row"])
-        .build();
+            .orientation(gtk::Orientation::Horizontal)
+            .hexpand(true)
+            .css_classes(["settings-item-details-box-row"])
+            .build();
 
         let version_label = gtk::Label::builder()
-        .label("Version")
-        .hexpand(true)
-        .halign(gtk::Align::Start)
-        .css_classes(["settings-item-details-box-row-key"])
-        .build();
+            .label("Version")
+            .hexpand(true)
+            .halign(gtk::Align::Start)
+            .css_classes(["settings-item-details-box-row-key"])
+            .build();
 
         let version_value = gtk::Label::builder()
-        .label("24.01")
-        .hexpand(true)
-        .halign(gtk::Align::End)
-        .css_classes(["settings-item-details-box-row-key"])
-        .build();
+            .label("24.01")
+            .hexpand(true)
+            .halign(gtk::Align::End)
+            .css_classes(["settings-item-details-box-row-key"])
+            .build();
 
         about_details_row_2.append(&version_label);
         about_details_row_2.append(&version_value);
         about_details_list1.append(&about_details_row_2);
 
         let about_details_row_3 = gtk::Box::builder()
-        .orientation(gtk::Orientation::Horizontal)
-        .hexpand(true)
-        .css_classes(["settings-item-details-box-row"])
-        .build();
+            .orientation(gtk::Orientation::Horizontal)
+            .hexpand(true)
+            .css_classes(["settings-item-details-box-row"])
+            .build();
 
         let serial_no_label = gtk::Label::builder()
-        .label("Serial Number")
-        .hexpand(true)
-        .halign(gtk::Align::Start)
-        .css_classes(["settings-item-details-box-row-key"])
-        .build();
+            .label("Serial Number")
+            .hexpand(true)
+            .halign(gtk::Align::Start)
+            .css_classes(["settings-item-details-box-row-key"])
+            .build();
 
         let serial_no_value = gtk::Label::builder()
-        .label("1245 6789")
-        .hexpand(true)
-        .halign(gtk::Align::End)
-        .css_classes(["settings-item-details-box-row-key"])
-        .build();
+            .label("1245 6789")
+            .hexpand(true)
+            .halign(gtk::Align::End)
+            .css_classes(["settings-item-details-box-row-key"])
+            .build();
 
         about_details_row_3.append(&serial_no_label);
         about_details_row_3.append(&serial_no_value);
         about_details_list2.append(&about_details_row_3);
 
-
         let about_details_row_4 = gtk::Box::builder()
-        .orientation(gtk::Orientation::Horizontal)
-        .hexpand(true)
-        .css_classes(["settings-item-details-box-row"])
-        .build();
+            .orientation(gtk::Orientation::Horizontal)
+            .hexpand(true)
+            .css_classes(["settings-item-details-box-row"])
+            .build();
 
         let wifi_address_label = gtk::Label::builder()
-        .label("Wi-Fi MAC Address")
-        .hexpand(true)
-        .halign(gtk::Align::Start)
-        .css_classes(["settings-item-details-box-row-key"])
-        .build();
+            .label("Wi-Fi MAC Address")
+            .hexpand(true)
+            .halign(gtk::Align::Start)
+            .css_classes(["settings-item-details-box-row-key"])
+            .build();
 
         let wifi_address_value = gtk::Label::builder()
-        .label("B0:35:B5:DA:A6:75")
-        .hexpand(true)
-        .halign(gtk::Align::End)
-        .css_classes(["settings-item-details-box-row-key"])
-        .build();
+            .label("B0:35:B5:DA:A6:75")
+            .hexpand(true)
+            .halign(gtk::Align::End)
+            .css_classes(["settings-item-details-box-row-key"])
+            .build();
 
         about_details_row_4.append(&wifi_address_label);
         about_details_row_4.append(&wifi_address_value);
         about_details_list2.append(&about_details_row_4);
 
-
         let about_details_row_5 = gtk::Box::builder()
-        .orientation(gtk::Orientation::Horizontal)
-        .hexpand(true)
-        .css_classes(["settings-item-details-box-row"])
-        .build();
+            .orientation(gtk::Orientation::Horizontal)
+            .hexpand(true)
+            .css_classes(["settings-item-details-box-row"])
+            .build();
 
         let ethernet_address_label = gtk::Label::builder()
-        .label("Ethernet MAC Address")
-        .hexpand(true)
-        .halign(gtk::Align::Start)
-        .css_classes(["settings-item-details-box-row-key"])
-        .build();
+            .label("Ethernet MAC Address")
+            .hexpand(true)
+            .halign(gtk::Align::Start)
+            .css_classes(["settings-item-details-box-row-key"])
+            .build();
 
         let ethernet_address_value = gtk::Label::builder()
-        .label("B0:35:B5:DA:A6:75")
-        .hexpand(true)
-        .halign(gtk::Align::End)
-        .css_classes(["settings-item-details-box-row-key"])
-        .build();
+            .label("B0:35:B5:DA:A6:75")
+            .hexpand(true)
+            .halign(gtk::Align::End)
+            .css_classes(["settings-item-details-box-row-key"])
+            .build();
 
         about_details_row_5.append(&ethernet_address_label);
         about_details_row_5.append(&ethernet_address_value);
@@ -223,12 +228,12 @@ impl SimpleComponent for AboutPage {
         root.append(&scrolled_window);
 
         let footer = gtk::Box::builder()
-        .orientation(gtk::Orientation::Horizontal)
-        .css_classes(["footer"])
-        .hexpand(true)
-        .vexpand(true)
-        .valign(gtk::Align::End)
-        .build();
+            .orientation(gtk::Orientation::Horizontal)
+            .css_classes(["footer"])
+            .hexpand(true)
+            .vexpand(true)
+            .valign(gtk::Align::End)
+            .build();
 
         let back_button = IconButton::builder()
             .launch(IconButtonStetings {
@@ -244,10 +249,16 @@ impl SimpleComponent for AboutPage {
 
         root.append(&footer);
 
-        let model = AboutPage { settings: init };
+        let model = AboutPage {
+            settings: init,
+            os_name: "Mechanix OS".to_owned(),
+            os_version: "24.01".to_owned(),
+        };
 
         let widgets = AboutPageWidgets {
-            back_button
+            back_button,
+            OsName: os_value,
+            OsVersion: version_value,
         };
 
         ComponentParts { model, widgets }
@@ -258,12 +269,25 @@ impl SimpleComponent for AboutPage {
         match message {
             Message::BackPressed => {
                 let _ = sender.output(Message::BackPressed);
-            },
+            }
             Message::HomeIconPressed => {
                 let _ = sender.output(Message::HomeIconPressed);
             }
-        }
+            Message::OSNameChanged(name) => {
+                self.os_name = name.clone();
+                let _ = sender.output(Message::OSNameChanged(name));
+            }
+            Message::OSVersionChanged(version) => {
+                self.os_version = version.clone();
+                let _ = sender.output(Message::OSVersionChanged(version));
+            }
+        };
     }
 
-    fn update_view(&self, widgets: &mut Self::Widgets, sender: ComponentSender<Self>) {}
+    fn update_view(&self, widgets: &mut Self::Widgets, sender: ComponentSender<Self>) {
+        info!("About- Update view");
+        widgets.OsName.set_label(&self.os_name);
+        widgets.OsVersion.set_label(&self.os_version);
+
+    }
 }

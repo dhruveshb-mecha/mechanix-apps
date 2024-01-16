@@ -33,6 +33,7 @@ mecha_device_info_ctl = "0.1.0"
 mecha_metrics_ctl = "0.1.0"
 mecha_display_ctl = "0.1.0"
 mecha_network_ctl = "0.1.1"
+mecha_device_oem_info = "0.1.0"
 wifi-ctrl = "0.2.3"
 
 
