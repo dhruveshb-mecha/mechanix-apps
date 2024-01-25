@@ -5,12 +5,12 @@ inherit cargo
 # If this is git based prefer versioned ones if they exist
 # DEFAULT_PREFERENCE = "-1"
 
-# how to get mecha_status_bar could be as easy as but default to a git checkout:
-# SRC_URI += "crate://crates.io/mecha_status_bar/1.0.0"
+# how to get mecha_greeter could be as easy as but default to a git checkout:
+# SRC_URI += "crate://crates.io/mecha_greeter/0.1.0"
 SRC_URI += "git://github.com/mecha-org/mechanix-shell.git;protocol=https;nobranch=1;branch=dev"
 SRCREV = "9d4d6bb622d5d8da28407edf9200b8b8493ad6a6"
 S = "${WORKDIR}/git"
-CARGO_SRC_DIR = "status_bar"
+CARGO_SRC_DIR = "greeter"
 PV:append = ".AUTOINC+9d4d6bb622"
 
 # please note if you have entries that do not begin with crate://
@@ -371,12 +371,12 @@ LIC_FILES_CHKSUM = " \
     file://MIT;md5=generateme \
 "
 
-SUMMARY = "Status Bar for Mecha Launcher, supports wlroots based compositors"
+SUMMARY = "Greeter"
 HOMEPAGE = "https://mecha.so"
 LICENSE = "MIT"
 
 # includes this file if it exists but does not fail
 # this is useful for anything you may want to override from
 # what cargo-bitbake generates.
-include mecha_status_bar-${PV}.inc
-include mecha_status_bar.inc
+include mecha_greeter-${PV}.inc
+include mecha_greeter.inc
